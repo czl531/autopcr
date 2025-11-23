@@ -68,114 +68,115 @@ class search_unit(Module):
 
             kizuna_unit = set()
             for story in db.chara2story[unit]:
-                kizuna_unit |= set(story.get_effect_unit_ids())
+                if story.story_id in db.story_detail:
+                    kizuna_unit.add(db.story_detail[story.story_id].requirement_id)
 
             love = []
             for other in kizuna_unit:
                 if other not in db.unlock_unit_condition: continue
-                unit_name = db.get_unit_name(other)
+                kizuna_name = db.get_unit_name(other)
                 unit_id = other // 100
                 love_level = client.data.unit_love_data[unit_id].love_level if unit_id in client.data.unit_love_data else 0
                 unit_story = [story.story_id for story in db.unit_story if story.story_group_id == unit_id]
                 total_storys = len(unit_story)
                 read_storys = len([story for story in unit_story if story in read_story])
-                love.append(f"{unit_name}好感{love_level}({read_storys}/{total_storys})")
+                love.append(f"{kizuna_name}好感{love_level}({read_storys}/{total_storys})")
             info.append("\n" + ";".join(i for i in love))
 
         self._log(" ".join(str(i) for i in info))
 
-# lanly版
+        data = client.unit_info_to_dict(unit)
+        header = ['姓名'] + list(data.keys())
+        data.update({"姓名": unit_name})
+        self._table_header(header)
+        self._table(data)
+
 # @description('从缓存中查询角色练度，不会登录！任意登录或者刷新box可以更新缓存')
 # @name('查box')
 # @notlogin(check_data=True)
 # @default(True)
-# @unitlist("box_unit", "查询角色")
-# @multichoice("box_unit_info", "角色信息", ['星级', '等级', '品级', '装备', 'UB', 'S1', 'S2', 'EX', '剧情', '专武1', '专武2', '普碎数', '金碎数'], ['星级', '等级', '品级', '装备', 'UB', 'S1', 'S2', 'EX', '剧情', '专武1', '专武2', '普碎数', '金碎数'])
-# @multichoice("box_user_info", "用户信息", ['名字', '数据时间', '钻石', '母猪石', '星球杯', '心碎', 'mana'], ['名字', '数据时间', '钻石', '母猪石', '星球杯', '心碎', 'mana'])
-# class get_box_table(Module):
-#     async def _prepare_user_data(self, client: pcrclient, box_user_info: Set[str]) -> Dict:
+# @multichoice("box_talent_info", "属性信息", ['火深域', '水深域', '风深域', '光深域', '暗深域', '火属性', '水属性', '风属性', '光属性', '暗属性', '属性技能', '大师技能'], ['火深域', '水深域', '风深域', '光深域', '暗深域', '火属性', '水属性', '风属性', '光属性', '暗属性', '属性技能', '大师技能'])
+# class get_box_table1(Module):
+#     async def _prepare_user_data(self, client: pcrclient, user_info: Set[str]) -> Dict:
 #         """准备用户基本信息"""
 #         ret = {
 #             "名字": client.data.user_name,
-#             "数据时间": db.format_time(db.parse_time(client.data.data_time)),
-#             "钻石": client.data.jewel.free_jewel,
-#             "母猪石": client.data.get_inventory((eInventoryType.Item, 90005)),
-#             "星球杯": client.data.get_inventory(db.xingqiubei),
-#             "心碎": client.data.get_inventory(db.xinsui),
-#             "mana": client.data.gold.gold_id_pay + client.data.gold.gold_id_free + client.data.user_gold_bank_info.bank_gold if client.data.user_gold_bank_info else 0
 #         }
-#         ret = {key : ret[key] for key in ret if key in box_user_info}
+#         ret.update({
+#             f"{db.talents[talent_id].talent_name}深域": client.data.get_talent_quest_single(talent_id) for talent_id in sorted([area.talent_id for area in db.talent_quest_area_data.values()])
+#         })
+#         ret.update({
+#             f"{db.talents[talent_info.talent_id].talent_name}属性": client.data.get_talent_level_single(talent_info) for talent_info in client.data.princess_knight_info.talent_level_info_list
+#         })
+#         ret.update({
+#             "属性技能": client.data.get_talent_skill_info(),
+#             "大师技能": client.data.get_master_skill_info(),
+#         })
+#         ret = {key : ret[key] for key in ret if key in user_info}
+#         print(ret)
 #         return ret
-    
-#     def _get_filtered_units(self, client: pcrclient, unit_list):
-#         """获取过滤后的角色列表"""
-#         if unit_list:
-#             filtered_units = unit_list.copy()
-#         else:
-#             filtered_units = list(client.data.unit.keys())
-#         return filtered_units
-    
-#     def _get_unit_data(self, client: pcrclient, unit_id: int, box_unit_info: Set[str]) -> Dict:
-#         """获取单个角色的详细数据"""
-#         unit_data = {
-#             "星级": "无",
-#             "等级": "无",
-#             "品级": "无",
-#             "装备": "无",
-#             "UB": 0,
-#             "S1": 0,
-#             "S2": 0,
-#             "EX": 0,
-#             "剧情": "无",
-#             "专武1": "无",
-#             "专武2": "无",
-#             "普碎数": "无",
-#             "金碎数": "无",
+# @description('包含uid、钻石、母猪石、心碎、星球杯等数据，不建议角色全部导出')
+# @name('导出box练度excel')
+# @notlogin(check_data=True)
+# @default(True)
+# @unitlist("export_units", "要导出的角色")
+# class get_box_excel(BoxDataExportBase):
+#     async def do_task(self, client: pcrclient):
+#         # 处理过滤角色列表
+#         export_units = self.get_config('export_units')
+#         export_units = self._parse_unit_list(export_units)
+        
+#         # 筛选角色
+#         filtered_units = self._get_filtered_units(client, export_units)
+        
+#         if not filtered_units:
+#             raise AbortError("没有找到符合条件的角色")
+        
+#         # 准备数据
+#         excel_data = {
+#             "user_info": await self._prepare_user_data(client),
+#             "units": []
 #         }
         
-#         read_story = set(client.data.read_story_ids)
-#         if unit_id in client.data.unit:
-#             unitinfo = client.data.unit[unit_id]
-#             rank = f"R{unitinfo.promotion_level}"
-#             equip = ''.join('-' if not solt.is_slot else str(solt.enhancement_level) for solt in unitinfo.equip_slot)
-#             total_storys = [story.story_id for story in db.unit_story if story.story_group_id == unit_id // 100]
-#             read_storys_num = len([id for id in total_storys if id in read_story])
-#             total_storys_num = len(total_storys)
-
-#             unit_data.update({
-#                 "星级": f"{unitinfo.unit_rarity}★",
-#                 "等级": unitinfo.unit_level,
-#                 "品级": rank,
-#                 "装备": equip,
-#                 "UB": unitinfo.union_burst[0].skill_level if unitinfo.union_burst else "无",
-#                 "S1": unitinfo.main_skill[0].skill_level if unitinfo.main_skill else "无",
-#                 "S2": unitinfo.main_skill[1].skill_level if len(unitinfo.main_skill) > 1 else "无",
-#                 "EX": unitinfo.ex_skill[0].skill_level if unitinfo.ex_skill else "无",
-#                 "剧情": f"{read_storys_num}/{total_storys_num}",
-#                 "专武1": "未实装" if not unitinfo.unique_equip_slot else "无" if not unitinfo.unique_equip_slot[0].is_slot else unitinfo.unique_equip_slot[0].enhancement_level,
-#                 "专武2": "未实装" if len(unitinfo.unique_equip_slot) < 2 else "无" if not unitinfo.unique_equip_slot[1].is_slot else unitinfo.unique_equip_slot[1].enhancement_level,
-#                 "普碎数": client.data.get_inventory((eInventoryType.Item, db.unit_to_memory[unit_id])) if unit_id in db.unit_to_memory else "无",
-#                 "金碎数": client.data.get_inventory((eInventoryType.Item, db.unit_to_pure_memory[unit_id])) if unit_id in db.unit_to_pure_memory else "无",
-#             })
+#         # 添加角色信息
+#         for unit in filtered_units:
+#             unit_data = self._get_unit_data(client, unit)
+#             excel_data["units"].append(unit_data)
         
-#         unit_data = {key: unit_data[key] for key in unit_data if key in box_unit_info}
-#         return unit_data
+#         # 将数据转换为JSON字符串并存入log
+#         excel_json = json.dumps(excel_data, ensure_ascii=False)
+#         self._log(f"BOX_EXCEL_DATA: {excel_json}")
+#         self._log(f"共导出 {len(filtered_units)} 个角色的数据")
 
+
+# @description('从缓存中查询角色练度，不会登录！任意登录或者刷新box可以更新缓存')
+# @name('查box（多选）')
+# @notlogin(check_data=True)
+# @default(True)
+# @unitlist("box_unit", "要显示的角色")
+# @multichoice("box_user_info", "要显示的用户信息", [], ["UID", "数据时间", "钻石", "母猪石", "星球杯", "心碎"])
+# class get_box_table(BoxDataExportBase):
 #     async def do_task(self, client: pcrclient):
+#         # 获取过滤角色列表
 #         box_unit = self.get_config('box_unit')
+#         box_unit = self._parse_unit_list(box_unit)
         
+#         # 获取要显示的信息列
+#         user_info = self.get_config('box_user_info')
+        
+#         # 筛选角色
 #         filtered_units = self._get_filtered_units(client, box_unit)
         
 #         if not filtered_units:
 #             raise AbortError("没有找到符合条件的角色")
 
-#         box_user_info = set(self.get_config('box_user_info'))
+#         user_info = set(self.get_config('box_user_info')) | set(self.get_config('box_talent_info'))
 #         box_unit_info = set(self.get_config('box_unit_info'))
         
 #         header = []
 #         data = {}
 
-#         user_data = await self._prepare_user_data(client, box_user_info)
+#         user_data = await self._prepare_user_data(client, user_info)
 #         data.update(user_data)
 #         header.extend(list(user_data.keys()))
 
@@ -184,9 +185,10 @@ class search_unit(Module):
 #             unit_name = db.get_unit_name(unit_id)
 #             header.append({unit_name: list(unit_data.keys())})
 #             data[unit_name] = unit_data
-        
+
 #         self._table_header(header)
 #         self._table(data)
+
 
 class BoxDataExportBase(Module):
     async def _prepare_user_data(self, client: pcrclient):
@@ -219,6 +221,7 @@ class BoxDataExportBase(Module):
     
     def _get_filtered_units(self, client: pcrclient, unit_list):
         """获取过滤后的角色列表"""
+        filtered_units = []
         if unit_list:
             filtered_units = unit_list.copy()
             self._log(f"使用筛选角色列表，共{len(filtered_units)}个角色")
@@ -392,126 +395,6 @@ class get_box_table(BoxDataExportBase):
         
         self._log(f"已输出用户 {user_data['user_name']} 的角色练度数据")
 
-# @description('从缓存中查询属性练度，不会登录！任意登录或者刷新box可以更新缓存')
-# @name('查属性练度')
-# @notlogin(check_data=True)
-# @default(True)
-# class get_talent_info(Module):
-#     async def do_task(self, client: pcrclient):
-#         princess_knight_info = client.data.princess_knight_info
-        
-#         if not princess_knight_info:
-#             self._log("未找到公主骑士信息")
-#             return
-            
-#         # 天赋属性映射
-#         talent_names = {
-#             1: "火属性",
-#             2: "水属性", 
-#             3: "风属性",
-#             4: "光属性",
-#             5: "暗属性"
-#         }
-        
-#         # 显示天赋等级信息
-#         self._log("=== 公主骑士属性等级 ===")
-#         for talent_info in princess_knight_info.talent_level_info_list:
-#             talent_name = talent_names.get(talent_info.talent_id, f"属性{talent_info.talent_id}")
-#             talent_level = db.get_talent_level(talent_info.total_point)
-#             self._log(f"{talent_name}: 点数{talent_info.total_point}, 等级{talent_level}")
-        
-#         # 显示天赋技能节点信息
-#         self._log("\n=== 属性技能节点增强等级 ===")
-#         if princess_knight_info.talent_skill_last_enhanced_page_node_list:
-#             talent_skill_list = [
-#                 {"node_id": node_info.node_id, "enhance_level": node_info.enhance_level} 
-#                 for node_info in princess_knight_info.talent_skill_last_enhanced_page_node_list
-#             ]
-            
-#             if talent_skill_list:
-#                 # 按node_id排序
-#                 talent_skill_list.sort(key=lambda x: x["node_id"])
-                
-#                 # 定义交点和页面边界
-#                 INTERSECTIONS = [1,26,54,82,110,138,166,194,222,235,248,261,274,287,300,313,326,
-#                                 339,352,365,378,391,404,417,430,443,456,469,482,495,508,521,534,
-#                                 547,560,573,586,599,612,625,638]
-#                 PAGE_BOUNDARIES = [4, 8, 16, 24, 32, 40]
-                
-#                 import bisect
-#                 import json
-                
-#                 max_node_id = talent_skill_list[-1]["node_id"] if talent_skill_list else 0
-
-#                 current_index = bisect.bisect_right(INTERSECTIONS, max_node_id) - 1
-#                 if current_index < 0:
-#                     current_index = 0
-                
-#                 current_level_value = INTERSECTIONS[current_index] if current_index < len(INTERSECTIONS) else 1
-#                 current_level_enhance = 0
-#                 if current_index < len(talent_skill_list) and current_level_value <= len(talent_skill_list):
-#                     current_level_enhance = talent_skill_list[current_level_value-1]["enhance_level"] if current_level_value-1 < len(talent_skill_list) else 0
-#                 current_page = bisect.bisect_left(PAGE_BOUNDARIES, current_index) + 1
-
-#                 node_ids = [n['node_id'] for n in talent_skill_list]
-#                 start_idx = bisect.bisect_right(node_ids, current_level_value) if node_ids else 0
-
-#                 columns = {
-#                     "left": {"count": 0, "last_level": 0},
-#                     "middle": {"count": 0, "last_level": 0},
-#                     "right": {"count": 0, "last_level": 0}
-#                 }
-
-#                 for node in talent_skill_list[start_idx:]:
-#                     offset = (node["node_id"] - current_level_value) % 3
-#                     if offset == 1:
-#                         columns["left"]["count"] += 1
-#                         columns["left"]["last_level"] = node["enhance_level"]
-#                     elif offset == 2:
-#                         columns["middle"]["count"] += 1
-#                         columns["middle"]["last_level"] = node["enhance_level"]
-#                     else:
-#                         columns["right"]["count"] += 1
-#                         columns["right"]["last_level"] = node["enhance_level"]
-
-#                 # 构造JSON格式的数据
-#                 talent_enhance_info = {
-#                     "page": current_page,
-#                     "combine": {
-#                         "index": current_index,
-#                         "level": current_level_enhance
-#                     },
-#                     "left": {
-#                         "count": columns['left']['count'],
-#                         "level": columns['left']['last_level']
-#                     },
-#                     "middle": {
-#                         "count": columns['middle']['count'],
-#                         "level": columns['middle']['last_level']
-#                     },
-#                     "right": {
-#                         "count": columns['right']['count'],
-#                         "level": columns['right']['last_level']
-#                     }
-#                 }
-                
-#                 # 输出JSON格式的信息
-#                 self._log(json.dumps(talent_enhance_info, ensure_ascii=False))
-#             else:
-#                 self._log("空的技能树数据")
-#         # 显示大师技能节点信息
-#         self._log("\n=== 大师技能节点 ===")
-#         if princess_knight_info.team_skill_latest_node:
-#             team_node = princess_knight_info.team_skill_latest_node
-#             # 构造大师技能节点的JSON信息
-#             master_skill_info = {
-#                 "node_id": team_node.node_id,
-#                 "enhance_level": team_node.enhance_level
-#             }
-#             self._log(json.dumps(master_skill_info, ensure_ascii=False))
-#         else:
-#             self._log("无大师技能节点信息")
-
 @description('从缓存中查询属性练度，不会登录！任意登录或者刷新box可以更新缓存')
 @name('查属性练度')
 @notlogin(check_data=True)
@@ -523,15 +406,6 @@ class get_talent_info(Module):
         if not princess_knight_info:
             self._log("未找到公主骑士信息")
             return
-            
-        # 属性映射
-        talent_names = {
-            1: "火属性",
-            2: "水属性", 
-            3: "风属性",
-            4: "光属性",
-            5: "暗属性"
-        }
 
         # 显示属性等级信息
         talent_levels = {}
@@ -549,78 +423,10 @@ class get_talent_info(Module):
             
             # 格式化为"当前等级【最高等级】"
             talent_levels[talent_info.talent_id] = f"{current_level}【{max_level}】"
-
-
-        # 显示属性技能节点信息
-        if princess_knight_info.talent_skill_last_enhanced_page_node_list:
-            talent_skill_list = [
-                {"node_id": node_info.node_id, "enhance_level": node_info.enhance_level} 
-                for node_info in princess_knight_info.talent_skill_last_enhanced_page_node_list
-            ]
-            
-            if talent_skill_list:
-                # 按node_id排序
-                talent_skill_list.sort(key=lambda x: x["node_id"])
-                
-                # 定义交点和页面边界
-                INTERSECTIONS = [1,26,54,82,110,138,166,194,222,235,248,261,274,287,300,313,326,
-                                339,352,365,378,391,404,417,430,443,456,469,482,495,508,521,534,
-                                547,560,573,586,599,612,625,638]
-                PAGE_BOUNDARIES = [4, 8, 16, 24, 32, 40]
-                
-                import bisect
-                import json
-                
-                max_node_id = talent_skill_list[-1]["node_id"] if talent_skill_list else 0
-
-                current_index = bisect.bisect_right(INTERSECTIONS, max_node_id) - 1
-                if current_index < 0:
-                    current_index = 0
-                
-                current_level_value = INTERSECTIONS[current_index] if current_index < len(INTERSECTIONS) else 1
-                current_level_enhance = 0
-                if current_index < len(talent_skill_list) and current_level_value <= len(talent_skill_list):
-                    current_level_enhance = talent_skill_list[current_level_value-1]["enhance_level"] if current_level_value-1 < len(talent_skill_list) else 0
-                current_page = bisect.bisect_left(PAGE_BOUNDARIES, current_index) + 1
-
-                node_ids = [n['node_id'] for n in talent_skill_list]
-                start_idx = bisect.bisect_right(node_ids, current_level_value) if node_ids else 0
-
-                columns = {
-                    "left": {"count": 0, "last_level": 0},
-                    "middle": {"count": 0, "last_level": 0},
-                    "right": {"count": 0, "last_level": 0}
-                }
-
-                for node in talent_skill_list[start_idx:]:
-                    offset = (node["node_id"] - current_level_value) % 3
-                    if offset == 1:
-                        columns["left"]["count"] += 1
-                        columns["left"]["last_level"] = node["enhance_level"]
-                    elif offset == 2:
-                        columns["middle"]["count"] += 1
-                        columns["middle"]["last_level"] = node["enhance_level"]
-                    else:
-                        columns["right"]["count"] += 1
-                        columns["right"]["last_level"] = node["enhance_level"]
-
-                skill_tree_text = (
-                    f"第{current_page}页 "
-                    f"合{current_index}[{current_level_enhance}] "
-                    f"左{columns['left']['count']}[{columns['left']['last_level']}] "
-                    f"中{columns['middle']['count']}[{columns['middle']['last_level']}] "
-                    f"右{columns['right']['count']}[{columns['right']['last_level']}] "
-                    f"【星幽碎片：{client.data.get_inventory((eInventoryType.Item, 25021))}】"
-                )
-
-        # 显示大师技能节点信息
-        if princess_knight_info.team_skill_latest_node:
-            team_node = princess_knight_info.team_skill_latest_node
-            team_node_text = f"{team_node.node_id}【大师碎片：{client.data.get_inventory((eInventoryType.Item, 25101))}】"
         # 构造JSON格式的数据
         talent_enhance_info = {
             "talent_levels": talent_levels,
-            "skill_tree": skill_tree_text if 'skill_tree_text' in locals() else "",
-            "team_skill": team_node_text if 'team_node_text' in locals() else 0,
+            "skill_tree": client.data.get_talent_skill_info(),
+            "team_skill": client.data.get_master_skill_info(),
         }
         self._log(json.dumps(talent_enhance_info, ensure_ascii=False))
