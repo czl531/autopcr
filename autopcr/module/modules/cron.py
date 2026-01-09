@@ -106,14 +106,14 @@ class cron4(NormalCronModule):
 
 @multichoice("module_exclude_type_cron5", "不执行日常模块", [], ['体力获取', '体力消耗'])
 @booltype("clanbattle_run_cron5", "会战期间执行", False)
-@timetype("time_cron5", "执行时间", "00:00")
+@timetype("time_cron7", "执行时间", "00:00")
 @description('定时执行')
 @name("定时任务5")
 @default(False)
 @notrunnable
-class jjc_cron1(NormalCronModule):
+class cron7(NormalCronModule):
     def get_cron_time(self) -> str:
-        return self.get_config("time_cron5")
+        return self.get_config("time_cron7")
     def get_clanbattle_run_status(self) -> bool:
         return self.get_config("clanbattle_run_cron5")
     def get_module_exclude_type(self) -> List[str]:
@@ -121,14 +121,14 @@ class jjc_cron1(NormalCronModule):
 
 @multichoice("module_exclude_type_cron6", "不执行日常模块", [], ['体力获取', '体力消耗'])
 @booltype("clanbattle_run_cron6", "会战期间执行", False)
-@timetype("time_cron6", "执行时间", "00:00")
+@timetype("time_cron8", "执行时间", "00:00")
 @description('定时执行')
 @name("定时任务6")
 @default(False)
 @notrunnable
-class jjc_cron2(NormalCronModule):
+class cron8(NormalCronModule):
     def get_cron_time(self) -> str:
-        return self.get_config("time_cron6")
+        return self.get_config("time_cron8")
     def get_clanbattle_run_status(self) -> bool:
         return self.get_config("clanbattle_run_cron6")
     def get_module_exclude_type(self) -> List[str]:
