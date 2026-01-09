@@ -42,6 +42,8 @@ cron_modules = ModuleList(
         cron2,
         cron3,
         cron4,
+        jjc_cron1,
+        jjc_cron2,
         cron5,
         cron6,
     ],
@@ -54,6 +56,7 @@ daily_modules = ModuleList(
     'daily',
     [
         global_config,
+        pjjc_def_shuffle_team,
         chara_fortune,
         mission_receive_first,
         clan_like,
