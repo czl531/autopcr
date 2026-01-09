@@ -56,11 +56,11 @@ daily_modules = ModuleList(
     'daily',
     [
         global_config,
-        pjjc_def_shuffle_team,
         chara_fortune,
+        pjjc_def_shuffle_team,
         mission_receive_first,
         clan_like,
-        room_like_back,
+        # room_like_back,
         free_gacha,
         normal_gacha,
         monthly_gacha,
