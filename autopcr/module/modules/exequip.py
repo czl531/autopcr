@@ -19,8 +19,8 @@ from collections import Counter
 @ExEquipSubStatusConfig('ex_equip_rainbow_enchance_sub_status_3', '炼成属性3')
 @ExEquipSubStatusConfig('ex_equip_rainbow_enchance_sub_status_2', '炼成属性2')
 @ExEquipSubStatusConfig('ex_equip_rainbow_enchance_sub_status_1', '炼成属性1')
-@singlechoice('ex_equip_rainbow_enchance_action', '做什么', '看属性', ['看属性', '炼成', '看概率'])
 @texttype('ex_equip_rainbow_enchance_id', '彩装id', 0)
+@singlechoice('ex_equip_rainbow_enchance_action', '做什么', '看属性', ['看属性', '炼成', '看概率'])
 @description('看属性指获取彩装id和炼成属性,炼成则进行究极炼成,看概率指根据炼成记录统计各属性概率,非满属性指属性值不必最大,以便手动用光球强化.属性优先级指目标属性值一样时,比较其他属性决定保留或放弃,优先级是按顺序从高到低,目标属性的优先级最高,不受属性优先级影响.满强目标属性会自动锁住.')
 class ex_equip_rainbow_enchance(Module):
 
@@ -39,9 +39,11 @@ class ex_equip_rainbow_enchance(Module):
             self._log(f"{cnt}件彩装:\n{msg}")
         elif ex_equip_rainbow_enchance_action == '看概率':
             for equip, data in self.iter_cache():
-                total = data.get('total', 1)
+                total = sum(data.values())
+                if total == 0:
+                    continue
                 equip = int(equip)
-                self._log(f"{db.get_ex_equip_name(equip)}(炼成{total}次)")
+                self._log(f"{db.get_ex_equip_name(equip)}({total}次词条刷新)")
                 info = flow(data.items()) \
                     .where(lambda kv: kv[0] != 'total') \
                     .select(lambda kv: (list(map(int, kv[0].split('-'))), kv[1])) \
@@ -83,6 +85,9 @@ class ex_equip_rainbow_enchance(Module):
             no_max_num = self.get_config('ex_equip_rainbow_enhance_no_max_num')
             target_cnt = sum(target_sub_status.values())
 
+            if no_max_num > target_cnt:
+                raise AbortError(f"非满属性个数{no_max_num}不能大于非任意的目标属性个数{target_cnt}")
+
             consume_cnt = Counter()
             alces_exec_cnt = 0
             last_lock_cnt = 0
@@ -105,13 +110,13 @@ class ex_equip_rainbow_enchance(Module):
                       f"{db.get_ex_equip_sub_status_str(client.data.ex_equips[serial_id].ex_equipment_id, client.data.ex_equips[serial_id].sub_status or [])}")
 
             pt_hold = self.get_config('ex_equip_rainbow_enhance_pt_hold')
-            self.cache_info = self.find_cache(client.data.ex_equips[serial_id].ex_equipment_id)
+            self.cache_info = self.find_cache(str(client.data.ex_equips[serial_id].ex_equipment_id))
             if not self.cache_info:
                 self.cache_info = Counter()
                 
             while not stop:
                 achived_max_cnt, achived_cnt = await self.get_achived_sub_status_cnt(client, serial_id, target_sub_status)
-                if achived_max_cnt == target_cnt - no_max_num and achived_cnt == target_cnt:
+                if achived_max_cnt >= target_cnt - no_max_num and achived_cnt >= target_cnt:
                     self._log("彩装炼成属性已达成目标")
                     break
 
@@ -150,7 +155,7 @@ class ex_equip_rainbow_enchance(Module):
                 self._log(f"共进行了{alces_exec_cnt}次究极炼成，消耗了：")
                 for consume in consume_cnt:
                     self._log(f"  {db.get_inventory_name_san(consume)} x {consume_cnt[consume]}")
-            self.save_cache(client.data.ex_equips[serial_id].ex_equipment_id, self.cache_info)
+            self.save_cache(str(client.data.ex_equips[serial_id].ex_equipment_id), self.cache_info)
             self._log(f"最终彩装属性 " +
                       f"{serial_id}: {db.get_ex_equip_name(client.data.ex_equips[serial_id].ex_equipment_id)} "
                       f"{db.get_ex_equip_sub_status_str(client.data.ex_equips[serial_id].ex_equipment_id, client.data.ex_equips[serial_id].sub_status or [])}")
@@ -173,8 +178,6 @@ class ex_equip_rainbow_enchance(Module):
     async def decide_alces(self, client: pcrclient, alces_data: AlcesData, target_sub_status: Counter):
         accept = False
         current_max_sub_status = Counter()
-
-        self.cache_info['total'] += 1
 
         for status in alces_data.sub_status:
             if status.is_lock:
