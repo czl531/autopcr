@@ -284,7 +284,7 @@ async def upload_excel(botev: BotEvent, data: BytesIO, filename: str, folder_nam
         upload_kwargs = {
             'action': 'upload_group_file',
             'group_id': gid,
-            'file': excel_R.url,
+            'file': excel_R.path,
             'name': filename
         }
         if folder_id:
