@@ -23,6 +23,7 @@ from .unit import *
 from .jjc import *
 from .talent import *
 from .mirage import *
+from .minigame import *
 
 @dataclass
 class ModuleList:
@@ -164,7 +165,6 @@ table_modules = ModuleList(
     'table',
     [
         get_box_table,
-        get_box_excel,
         get_talent_info,
         get_need_pure_memory,
     ],
@@ -237,6 +237,7 @@ tool_modules = ModuleList(
         caravan_shop_buy,  
         redeem_unit_swap,
         mini_game_nbb,
+        mini_game_bsm,
     ]
 )
 
