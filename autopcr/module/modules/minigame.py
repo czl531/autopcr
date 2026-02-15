@@ -37,9 +37,7 @@ class mini_game_bsm(Module):
         start_mode_id = res.last_clear_solo_mode_id + 1  # 从下一关开始
         
         for mode_id in range(start_mode_id, 51):  # 从已通关的下一关开始刷到第50关
-            if mode_id == 12:  # 第12关需要阅读剧情
-                await client.arcade_story(515671)
-            
+
             token = create_battle_start_token()
             await client.bsm_solo_start(mode_id, 1, token, 6001)
             await client.bsm_solo_finish(3, token, 6001)
@@ -56,3 +54,48 @@ class mini_game_bsm(Module):
 
         res = await client.bsm_top(6001)
         self._log(f"对战{battle_count}场结束，当前pt点数：{res.battle_point}")
+
+@description('剧情活动期间需首次击杀普通boss才能解锁该小游戏，所有难度直接完成114514得分，称号需自己上号领取！')
+@name('小游戏：行军大冒险 A-Go-Go！')
+@default(True)
+class mini_game_nbb(Module):
+    async def do_task(self, client: pcrclient):
+        score = 114514
+        
+        # 角色类型映射
+        chara_names = {
+            1: "惠理子",
+            2: "真琴"
+        }
+        
+        try:
+            resp = await client.nbb_minigame_top(6001)
+        except Exception as e:
+            self._log(f"检查是否首通普通boss难度，当前无法获取小游戏信息: {e}")
+            return
+            
+        # 检查已解锁的难度
+        unlocked_difficulties = {high_score.difficulty for high_score in resp.high_score_list}
+        
+        # 尝试两个角色
+        for chara_type in [1, 2]:
+            chara_name = chara_names.get(chara_type, f"角色{chara_type}")
+            # 尝试三个难度 (1, 2, 3)
+            for difficulty in [1, 2, 3]:
+                # 只有当难度已解锁时才尝试
+                if difficulty in unlocked_difficulties:
+                    try:
+                        data = await client.nbb_minigame_start(chara_type, difficulty, 6001)
+                        # 根据难度设置不同的clear_flg参数
+                        clear_flg = 1 if difficulty in [1, 2] else 0
+                        await client.nbb_minigame_finish(data.play_id, score, 1500, [], clear_flg, 6001)
+                        self._log(f"{chara_name}难度{difficulty}完成，得分{score}")
+                        
+                        # 完成后重新检查已解锁的难度
+                        resp = await client.nbb_minigame_top(6001)
+                        unlocked_difficulties = {high_score.difficulty for high_score in resp.high_score_list}
+                    except Exception as e:
+                        self._log(f"{chara_name}难度{difficulty}失败: {e}")
+                else:
+                    self._log(f"{chara_name}难度{difficulty}未解锁，跳过")
+                    
